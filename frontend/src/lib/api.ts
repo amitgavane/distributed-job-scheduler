@@ -1,4 +1,4 @@
-const API_BASE = import.meta.env.VITE_API_URL || '/api';
+const API_BASE = import.meta.env.VITE_API_URL || 'https://distributed-job-scheduler-backend-1q2g.onrender.com/api';
 
 class ApiError extends Error {
   constructor(public status: number, message: string) {
@@ -86,7 +86,6 @@ export const liveApi = {
   },
 
   // --- NEW PHASE 6 INTEGRATION ---
-  // Cleanly integrated using the existing request wrapper!
   bulkRetryDeadLetter: (queueId: string) =>
     request<{ count: number }>('/jobs/dlq/replay', {
       method: 'POST',
@@ -293,6 +292,4 @@ export { ApiError };
 import { IS_DEMO } from './isDemo';
 import { demoApi } from './api.demo';
 
-// Note: If you get a TypeScript warning here about `demoApi` missing `bulkRetryDeadLetter`, 
-// you can safely ignore it, or add a dummy `bulkRetryDeadLetter: async () => ({ count: 0 })` inside api.demo.ts!
 export const api = IS_DEMO ? demoApi : liveApi;
