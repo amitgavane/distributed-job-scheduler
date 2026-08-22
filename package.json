@@ -1,0 +1,39 @@
+{
+  "name": "codity-scheduler",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Distributed job scheduler — Athul S (RA2311047010117)",
+  "author": "Athul S <RA2311047010117>",
+  "engines": {
+    "node": ">=20"
+  },
+  "workspaces": [
+    "backend",
+    "worker",
+    "frontend",
+    "shared"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev -w backend\" \"npm run dev:scheduler -w backend\" \"npm run dev -w worker\" \"npm run dev -w frontend\"",
+    "dev:db": "tsx scripts/start-postgres.ts",
+    "setup": "npm run db:push && npm run db:seed",
+    "start": "concurrently -k \"npm run dev:db\" \"npm run dev\"",
+    "build": "npm run build -w shared && npm run build -w backend && npm run build -w worker && npm run build -w frontend",
+    "test": "npm run test -w backend && npm run test -w worker",
+    "db:migrate": "npm run db:migrate -w backend",
+    "db:seed": "npm run db:seed -w backend",
+    "db:studio": "npm run db:studio -w backend",
+    "render:build:api": "npm run build -w shared && npm run build -w backend && npm run db:push -w backend && npm run db:seed -w backend",
+    "render:build:worker": "npm run build -w shared && npm run build -w worker",
+    "render:build:frontend": "npm run build -w shared && node frontend/scripts/prepare-render-env.mjs",
+    "render:start:api": "bash scripts/start-render-api.sh",
+    "dev:demo": "npm run dev:demo -w frontend",
+    "build:demo": "npm run build -w shared && npm run build:demo -w frontend"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "embedded-postgres": "^18.4.0-beta.17",
+    "pg": "^8.22.0",
+    "tsx": "^4.23.0"
+  }
+}

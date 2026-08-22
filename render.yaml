@@ -1,0 +1,75 @@
+# Render Blueprint — Athul S (RA2311047010117)
+# One-click deploy: Postgres + API + Worker + Frontend
+# https://render.com/docs/blueprint-spec
+
+databases:
+  - name: codity-db
+    databaseName: codity_scheduler
+    plan: free
+    region: singapore
+
+envVarGroups:
+  - name: codity-secrets
+    envVars:
+      - key: JWT_SECRET
+        generateValue: true
+      - key: WORKER_REGISTRATION_KEY
+        generateValue: true
+
+services:
+  - type: web
+    name: codity-api
+    runtime: node
+    region: singapore
+    plan: free
+    buildCommand: npm install && npm run render:build:api
+    startCommand: npm run start -w backend
+    healthCheckPath: /health
+    envVars:
+      - fromGroup: codity-secrets
+      - key: NODE_ENV
+        value: production
+      - key: RUN_SCHEDULER_IN_API
+        value: "true"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: codity-db
+          property: connectionString
+      - key: CORS_ORIGIN
+        fromService:
+          type: web
+          name: codity-frontend
+          envVarKey: RENDER_EXTERNAL_URL
+
+  - type: worker
+    name: codity-worker
+    runtime: node
+    region: singapore
+    plan: starter
+    buildCommand: npm install && npm run render:build:worker
+    startCommand: npm run start -w worker
+    envVars:
+      - fromGroup: codity-secrets
+      - key: API_URL
+        fromService:
+          type: web
+          name: codity-api
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: WORKER_MAX_CONCURRENCY
+        value: "5"
+
+  - type: web
+    name: codity-frontend
+    runtime: static
+    buildCommand: npm install && npm run render:build:frontend
+    staticPublishPath: frontend/dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_WS_URL
+        fromService:
+          type: web
+          name: codity-api
+          envVarKey: RENDER_EXTERNAL_URL
