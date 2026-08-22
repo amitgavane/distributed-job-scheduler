@@ -1,9 +1,6 @@
 # Distributed Job Scheduler
 
-**Amit Gavane** · B.Tech IT, SGGS Institute of Engineering and Technology, Nanded  
-Intern assignment — a production-inspired distributed background job system featuring concurrent workers, resilient retries, atomic database transactions, and a real-time web dashboard.
-
----
+**Amit Gavane** SGGS IT (2023BIT011)
 
 ## Where things stand
 
@@ -13,9 +10,7 @@ Full stack runs locally: API, scheduler, worker, Postgres, React dashboard. Seed
 
 Static mock UI — same screens, fake data. Banner links back here for the real app.
 
-CI passes on GitHub Actions. Render Blueprint handles production deployment.
-
----
+CI passes on GitHub Actions. Render Blueprint was tried; free-tier worker hosting is still awkward.
 
 ## Architecture
 
@@ -33,11 +28,12 @@ flowchart LR
     FE_PKG --> SH_PKG
     BE_PKG --> SH_PKG
     WK_PKG --> SH_PKG
+```
 
+### Visual demo vs full application
 
-Visual demo vs full application
-
-    flowchart LR
+```mermaid
+flowchart LR
     subgraph Full["Full application"]
         FE2[React Dashboard]
         API2[Express API]
@@ -52,11 +48,12 @@ Visual demo vs full application
         FIX[fixtures.ts<br/>generate-fixtures.ts]
         FE3 --> FIX
     end
+```
 
+### System overview
 
-System overview
-
-    flowchart TB
+```mermaid
+flowchart TB
     subgraph Client["Client layer"]
         FE["React Dashboard<br/>Vite · Tailwind · Recharts"]
         DEMO["Visual demo<br/>static · GitHub Pages"]
@@ -106,11 +103,12 @@ System overview
 
     EXPRESS --- TYPES
     W1 --- TYPES
+```
 
+### Job lifecycle
 
-Job lifecycle
-
-    stateDiagram-v2
+```mermaid
+stateDiagram-v2
     [*] --> SCHEDULED : delayed / scheduled / cron
     SCHEDULED --> QUEUED : scheduler promotes
     [*] --> QUEUED : immediate / batch child
@@ -127,11 +125,12 @@ Job lifecycle
     COMPLETED --> [*]
     DEAD_LETTER --> [*]
     CANCELLED --> [*]
+```
 
+### End-to-end job flow
 
-End-to-end job flow
-
-    sequenceDiagram
+```mermaid
+sequenceDiagram
     actor User
     participant FE as Dashboard
     participant API as Express API
@@ -164,12 +163,12 @@ End-to-end job flow
         SCH->>PG: promote scheduled, retry failed
         SCH->>WS: emit scheduler:tick
     end
+```
 
+### Domain model (Postgres)
 
-
-Domain model (Postgres)
-
-    erDiagram
+```mermaid
+erDiagram
     User ||--o{ OrganizationMember : has
     Organization ||--o{ OrganizationMember : has
     Organization ||--o{ Project : owns
@@ -216,71 +215,113 @@ Domain model (Postgres)
         string hostname
         string status
     }
+```
 
+---
 
-Startup
-Needs Node 20+.
+## Startup
 
-1. Install
+Needs **Node 20+**.
+
+### 1. Install
+
+```bash
 git clone [https://github.com/amitgavane/distributed-job-scheduler.git](https://github.com/amitgavane/distributed-job-scheduler.git)
 cd distributed-job-scheduler
 npm install
+```
 
+### 2. Environment
 
-2. Environment
-Root .env and backend/.env should point at local Postgres. Minimum:
+Root `.env` and `backend/.env` should point at local Postgres. Minimum:
 
-DATABASE_URL="postgresql://scheduler:scheduler_secret@localhost:5432 codity_scheduler?schema=public"
+```env
+DATABASE_URL="postgresql://scheduler:scheduler_secret@localhost:5432/codity_scheduler?schema=public"
 JWT_SECRET="change-me-in-production"
 WORKER_REGISTRATION_KEY="dev-worker-register-key"
 PORT=3001
 CORS_ORIGIN="http://localhost:5173"
+```
 
-Redis is optional (REDIS_URL=redis://localhost:6379). Without it, rate limits and scheduler leader lock fall back to in-memory.
+Redis is optional (`REDIS_URL=redis://localhost:6379`). Without it, rate limits and scheduler leader lock fall back to in-memory (fine for local dev).
 
-3. Database (first time)
+### 3. Database (first time)
+
+```bash
 npm run db:push -w backend
 npm run db:seed -w backend
+```
 
 If the API complains about Prisma client:
+
+```bash
 npx prisma generate --schema=backend/prisma/schema.prisma
+```
 
-4. Run full applicationOne command — embedded Postgres + API + scheduler + worker + frontend:
+### 4. Run full application
+
+One command — embedded Postgres + API + scheduler + worker + frontend:
+
+```bash
 npm run start
-Service             URL
-Dashboard           http://localhost:5173
-API                 http://localhost:3001
-Health              http://localhost:3001/health
+```
 
-Login: admin@test.local / password123 (all seed users use password123)
+| Service    | URL |
+|------------|-----|
+| Dashboard  | http://localhost:5173 |
+| API        | http://localhost:3001 |
+| Health     | http://localhost:3001/health |
+
+**Login:** `admin@test.local` / `password123` (all seed users use `password123`)
+
 Or run processes separately:
+
+```bash
 npm run dev:db                    # terminal 1 — Postgres
 npm run dev -w backend            # terminal 2 — API + WebSocket
 npm run dev:scheduler -w backend  # terminal 3 — scheduler
 npm run dev -w worker             # terminal 4 — worker
-npm run dev -w frontend           # terminal 5 — dashboard
+npm run dev -w frontend           # terminal 5 — dashboard (not dev:demo)
+```
 
-5. Visual demo only (mock data)
+### 5. Visual demo only (mock data)
+
+```bash
 npm run dev:demo
+```
 
 Opens http://localhost:5173 — auto-logged in, read-only, no API/worker/DB.
 
+Build static site: `npm run build:demo` → output in `frontend/dist/`. See [deploy-visual-demo.md](docs/deploy-visual-demo.md).
 
-What I built
-Authentication, organizations, projects, queues (priority, concurrency, retry policy, pause/resume). Five job types: immediate, delayed, scheduled, recurring, and batch. Workers claim jobs via atomic FOR UPDATE SKIP LOCKED, execute handlers concurrently, send heartbeats, and support graceful shutdowns. Configurable retries with fixed, linear, and exponential backoff; Dead Letter Queue isolation with atomic bulk replay transactions. Includes RBAC, workflow dependencies, idempotency keys, advanced debounced search, Redis metrics caching, WebSocket live feeds, and Vitest integration testing.
+### Troubleshooting
 
-Stack: Node, Express, Prisma, PostgreSQL, React, Vite, Tailwind CSS, Socket.IO, Redis, Vitest.
+| Problem | Fix |
+|---------|-----|
+| Worker `401 Invalid worker` | Delete `.worker-credentials.json` in project root, restart stack |
+| `concurrently` / `tsx` not found | Run `npm install` again (stop any running `dev:demo` first if Windows locks files) |
+| Throughput chart flat | Run `npm run db:seed -w backend` |
+| Port 5173 in use | Stop `npm run dev:demo` before `npm run start` |
+
+---
+
+## What I built
+
+Auth, orgs, projects, queues (priority, concurrency, retry policy, pause/resume). Five job types: immediate, delayed, scheduled, recurring, batch. Workers claim via `FOR UPDATE SKIP LOCKED`, run handlers, heartbeat, graceful drain. Retries with fixed/linear/exponential backoff; DLQ with failure summaries. RBAC, job dependencies, idempotency keys, metrics, WebSocket live feed, integration tests.
+
+Stack: Node, Express, Prisma/Postgres, React/Vite/Tailwind, Socket.IO, optional Redis.
+
+---
+
+## Docs
+
+- [architecture.md](docs/architecture.md)
+- [api-documentation.md](docs/api-documentation.md)
+- [deploy-visual-demo.md](docs/deploy-visual-demo.md)
+- [deploy-render.md](docs/deploy-render.md)
+- [er-diagram.md](docs/er-diagram.md)
+- [design-decisions.md](docs/design-decisions.md)
+
+---
 
 
-Docs: 
-architecture.md
-
-api-documentation.md
-
-deploy-visual-demo.md
-
-deploy-render.md
-
-er-diagram.md
-
-design-decisions.md
