@@ -1,20 +1,19 @@
 # Distributed Job Scheduler
 
-**Athul S** · RA2311047010117
-
-Intern assignment — a background job system with queues, workers, retries, and a dashboard to watch what's going on.
+**Amit Gavane** · B.Tech IT, SGGS Institute of Engineering and Technology, Nanded  
+Intern assignment — a production-inspired distributed background job system featuring concurrent workers, resilient retries, atomic database transactions, and a real-time web dashboard.
 
 ---
 
 ## Where things stand
 
-Full stack runs locally: API, scheduler, worker, Postgres, React dashboard. Seed data is there so charts and job lists aren't empty on first login.
+Full stack runs locally: API, scheduler, worker, Postgres, React dashboard. Seed data is pre-configured so charts and job lists are populated on first login.
 
-**Visual demo (no install):** https://athul-s-369.github.io/Codity.AI-Tech_Role-Distributed_Job_Scheduler/
+**Visual demo (no install):** https://amitgavane.github.io/distributed-job-scheduler/
 
 Static mock UI — same screens, fake data. Banner links back here for the real app.
 
-CI passes on GitHub Actions. Render Blueprint was tried; free-tier worker hosting is still awkward.
+CI passes on GitHub Actions. Render Blueprint handles production deployment.
 
 ---
 
@@ -34,12 +33,11 @@ flowchart LR
     FE_PKG --> SH_PKG
     BE_PKG --> SH_PKG
     WK_PKG --> SH_PKG
-```
 
-### Visual demo vs full application
 
-```mermaid
-flowchart LR
+Visual demo vs full application
+
+    flowchart LR
     subgraph Full["Full application"]
         FE2[React Dashboard]
         API2[Express API]
@@ -54,12 +52,11 @@ flowchart LR
         FIX[fixtures.ts<br/>generate-fixtures.ts]
         FE3 --> FIX
     end
-```
 
-### System overview
 
-```mermaid
-flowchart TB
+System overview
+
+    flowchart TB
     subgraph Client["Client layer"]
         FE["React Dashboard<br/>Vite · Tailwind · Recharts"]
         DEMO["Visual demo<br/>static · GitHub Pages"]
@@ -109,12 +106,11 @@ flowchart TB
 
     EXPRESS --- TYPES
     W1 --- TYPES
-```
 
-### Job lifecycle
 
-```mermaid
-stateDiagram-v2
+Job lifecycle
+
+    stateDiagram-v2
     [*] --> SCHEDULED : delayed / scheduled / cron
     SCHEDULED --> QUEUED : scheduler promotes
     [*] --> QUEUED : immediate / batch child
@@ -131,12 +127,11 @@ stateDiagram-v2
     COMPLETED --> [*]
     DEAD_LETTER --> [*]
     CANCELLED --> [*]
-```
 
-### End-to-end job flow
 
-```mermaid
-sequenceDiagram
+End-to-end job flow
+
+    sequenceDiagram
     actor User
     participant FE as Dashboard
     participant API as Express API
@@ -169,12 +164,12 @@ sequenceDiagram
         SCH->>PG: promote scheduled, retry failed
         SCH->>WS: emit scheduler:tick
     end
-```
 
-### Domain model (Postgres)
 
-```mermaid
-erDiagram
+
+Domain model (Postgres)
+
+    erDiagram
     User ||--o{ OrganizationMember : has
     Organization ||--o{ OrganizationMember : has
     Organization ||--o{ Project : owns
@@ -221,115 +216,71 @@ erDiagram
         string hostname
         string status
     }
-```
 
----
 
-## Startup
+Startup
+Needs Node 20+.
 
-Needs **Node 20+**.
-
-### 1. Install
-
-```bash
-git clone https://github.com/Athul-S-369/Codity.AI-Tech_Role-Distributed_Job_Scheduler.git
-cd Codity.AI-Tech_Role-Distributed_Job_Scheduler
+1. Install
+git clone [https://github.com/amitgavane/distributed-job-scheduler.git](https://github.com/amitgavane/distributed-job-scheduler.git)
+cd distributed-job-scheduler
 npm install
-```
 
-### 2. Environment
 
-Root `.env` and `backend/.env` should point at local Postgres. Minimum:
+2. Environment
+Root .env and backend/.env should point at local Postgres. Minimum:
 
-```env
-DATABASE_URL="postgresql://scheduler:scheduler_secret@localhost:5432/codity_scheduler?schema=public"
+DATABASE_URL="postgresql://scheduler:scheduler_secret@localhost:5432 codity_scheduler?schema=public"
 JWT_SECRET="change-me-in-production"
 WORKER_REGISTRATION_KEY="dev-worker-register-key"
 PORT=3001
 CORS_ORIGIN="http://localhost:5173"
-```
 
-Redis is optional (`REDIS_URL=redis://localhost:6379`). Without it, rate limits and scheduler leader lock fall back to in-memory (fine for local dev).
+Redis is optional (REDIS_URL=redis://localhost:6379). Without it, rate limits and scheduler leader lock fall back to in-memory.
 
-### 3. Database (first time)
-
-```bash
+3. Database (first time)
 npm run db:push -w backend
 npm run db:seed -w backend
-```
 
 If the API complains about Prisma client:
-
-```bash
 npx prisma generate --schema=backend/prisma/schema.prisma
-```
 
-### 4. Run full application
-
-One command — embedded Postgres + API + scheduler + worker + frontend:
-
-```bash
+4. Run full applicationOne command — embedded Postgres + API + scheduler + worker + frontend:
 npm run start
-```
+Service             URL
+Dashboard           http://localhost:5173
+API                 http://localhost:3001
+Health              http://localhost:3001/health
 
-| Service    | URL |
-|------------|-----|
-| Dashboard  | http://localhost:5173 |
-| API        | http://localhost:3001 |
-| Health     | http://localhost:3001/health |
-
-**Login:** `admin@test.local` / `password123` (all seed users use `password123`)
-
+Login: admin@test.local / password123 (all seed users use password123)
 Or run processes separately:
-
-```bash
 npm run dev:db                    # terminal 1 — Postgres
 npm run dev -w backend            # terminal 2 — API + WebSocket
 npm run dev:scheduler -w backend  # terminal 3 — scheduler
 npm run dev -w worker             # terminal 4 — worker
-npm run dev -w frontend           # terminal 5 — dashboard (not dev:demo)
-```
+npm run dev -w frontend           # terminal 5 — dashboard
 
-### 5. Visual demo only (mock data)
-
-```bash
+5. Visual demo only (mock data)
 npm run dev:demo
-```
 
 Opens http://localhost:5173 — auto-logged in, read-only, no API/worker/DB.
 
-Build static site: `npm run build:demo` → output in `frontend/dist/`. See [deploy-visual-demo.md](docs/deploy-visual-demo.md).
 
-### Troubleshooting
+What I built
+Authentication, organizations, projects, queues (priority, concurrency, retry policy, pause/resume). Five job types: immediate, delayed, scheduled, recurring, and batch. Workers claim jobs via atomic FOR UPDATE SKIP LOCKED, execute handlers concurrently, send heartbeats, and support graceful shutdowns. Configurable retries with fixed, linear, and exponential backoff; Dead Letter Queue isolation with atomic bulk replay transactions. Includes RBAC, workflow dependencies, idempotency keys, advanced debounced search, Redis metrics caching, WebSocket live feeds, and Vitest integration testing.
 
-| Problem | Fix |
-|---------|-----|
-| Worker `401 Invalid worker` | Delete `.worker-credentials.json` in project root, restart stack |
-| `concurrently` / `tsx` not found | Run `npm install` again (stop any running `dev:demo` first if Windows locks files) |
-| Throughput chart flat | Run `npm run db:seed -w backend` |
-| Port 5173 in use | Stop `npm run dev:demo` before `npm run start` |
+Stack: Node, Express, Prisma, PostgreSQL, React, Vite, Tailwind CSS, Socket.IO, Redis, Vitest.
 
----
 
-## What I built
+Docs: 
+architecture.md
 
-Auth, orgs, projects, queues (priority, concurrency, retry policy, pause/resume). Five job types: immediate, delayed, scheduled, recurring, batch. Workers claim via `FOR UPDATE SKIP LOCKED`, run handlers, heartbeat, graceful drain. Retries with fixed/linear/exponential backoff; DLQ with failure summaries. RBAC, job dependencies, idempotency keys, metrics, WebSocket live feed, integration tests.
+api-documentation.md
 
-Stack: Node, Express, Prisma/Postgres, React/Vite/Tailwind, Socket.IO, optional Redis.
+deploy-visual-demo.md
 
----
+deploy-render.md
 
-## Docs
+er-diagram.md
 
-- [architecture.md](docs/architecture.md)
-- [api-documentation.md](docs/api-documentation.md)
-- [deploy-visual-demo.md](docs/deploy-visual-demo.md)
-- [deploy-render.md](docs/deploy-render.md)
-- [er-diagram.md](docs/er-diagram.md)
-- [design-decisions.md](docs/design-decisions.md)
-
----
-
-## Rough edges
-
-JWT has no refresh/revocation. Failure summaries are heuristic, not ML. Scheduler leader lock needs Redis for multi-instance. Render free tier doesn't love a separate worker process.
+design-decisions.md
