@@ -1,0 +1,12 @@
+node_modules/
+.worker-credentials.json
+.pgdata/
+dist/
+build/
+.env
+.env.local
+*.log
+.DS_Store
+coverage/
+.turbo/
+*.tsbuildinfo
