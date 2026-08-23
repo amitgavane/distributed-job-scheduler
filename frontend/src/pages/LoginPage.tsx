@@ -8,21 +8,22 @@ export function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setSuccessMsg('');
     setLoading(true);
 
     try {
       if (isRegistering) {
         await api.register(email, password, name);
-        // Automatically sign them in or switch to login mode with success message
-        const res = await api.login(email, password);
-        localStorage.setItem('token', res.token);
-        navigate('/');
+        setSuccessMsg('Account created successfully! Please sign in.');
+        setIsRegistering(false); // Switch back to Sign In view
+        setPassword(''); // Clear password field for security
       } else {
         const res = await api.login(email, password);
         localStorage.setItem('token', res.token);
@@ -54,6 +55,12 @@ export function LoginPage() {
         {error && (
           <div className="mb-4 p-3 bg-red-950/50 border border-red-800 text-red-200 text-sm rounded-lg">
             {error}
+          </div>
+        )}
+
+        {successMsg && (
+          <div className="mb-4 p-3 bg-emerald-950/50 border border-emerald-800 text-emerald-200 text-sm rounded-lg">
+            {successMsg}
           </div>
         )}
 
