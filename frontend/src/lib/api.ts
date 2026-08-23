@@ -1,4 +1,4 @@
-const API_BASE = import.meta.env.VITE_API_URL || 'https://distributed-job-scheduler-backend-1q2g.onrender.com/api';
+const API_BASE = 'https://distributed-job-scheduler-backend-1q2g.onrender.com/api';
 
 class ApiError extends Error {
   constructor(public status: number, message: string) {
