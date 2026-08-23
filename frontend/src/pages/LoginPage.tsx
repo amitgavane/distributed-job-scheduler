@@ -1,86 +1,139 @@
-import { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { Button, Card, Input } from '../components/ui';
-import { AUTHOR_LABEL, AUTHOR_NAME, AUTHOR_REGISTRATION } from '@codity/shared';
-import { IS_DEMO, DEMO_GITHUB_URL } from '../lib/isDemo';
-import { DemoBanner } from '../components/DemoBanner';
+import { api, ApiError } from '../lib/api';
 
 export function LoginPage() {
-  const { login, isAuthenticated } = useAuth();
-  const navigate = useNavigate();
-  const [email, setEmail] = useState(IS_DEMO ? 'admin@test.local' : '');
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (IS_DEMO && isAuthenticated) navigate('/', { replace: true });
-  }, [isAuthenticated, navigate]);
+  const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     setError('');
+    setLoading(true);
+
     try {
-      await login(email, password);
-      navigate('/');
+      if (isRegistering) {
+        await api.register(email, password, name);
+        // Automatically sign them in or switch to login mode with success message
+        const res = await api.login(email, password);
+        localStorage.setItem('token', res.token);
+        navigate('/');
+      } else {
+        const res = await api.login(email, password);
+        localStorage.setItem('token', res.token);
+        navigate('/');
+      }
     } catch (err) {
-      setError((err as Error).message);
+      if (err instanceof ApiError) {
+        setError(err.message);
+      } else {
+        setError('An unexpected error occurred');
+      }
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-surface">
-      {IS_DEMO && <DemoBanner />}
-      <div className="flex-1 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center bg-slate-950 px-4">
+      <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-xl p-8 shadow-2xl">
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold">Job Scheduler</h1>
-          <p className="text-text-secondary text-sm mt-2">{AUTHOR_NAME}</p>
-          <p className="text-text-secondary text-xs">{AUTHOR_REGISTRATION}</p>
+          <h1 className="text-2xl font-bold text-white tracking-wide">
+            Distributed Job Scheduler
+          </h1>
+          <p className="text-sm text-slate-400 mt-1">
+            Engineered by <span className="text-emerald-400 font-medium">Amit Gavane</span>
+          </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <Input
-            label="Email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-          <Input
-            label="Password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
+        {error && (
+          <div className="mb-4 p-3 bg-red-950/50 border border-red-800 text-red-200 text-sm rounded-lg">
+            {error}
+          </div>
+        )}
 
-          {error && (
-            <p className="text-danger text-sm bg-danger/10 px-3 py-2 rounded-lg">{error}</p>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {isRegistering && (
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">
+                Full Name
+              </label>
+              <input
+                type="text"
+                required
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
+                placeholder="Amit Gavane"
+              />
+            </div>
           )}
 
-          <Button type="submit" disabled={loading} className="w-full">
-            {loading ? 'Signing in...' : 'Sign In'}
-          </Button>
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">
+              Email Address
+            </label>
+            <input
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
+              placeholder="admin@test.local"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">
+              Password
+            </label>
+            <input
+              type="password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
+              placeholder="••••••••"
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-2 rounded-lg transition-colors shadow-lg shadow-emerald-900/20 disabled:opacity-50"
+          >
+            {loading ? 'Please wait...' : isRegistering ? 'Create Account' : 'Sign In'}
+          </button>
         </form>
 
-        <p className="text-xs text-text-secondary text-center mt-6">
-          {IS_DEMO ? (
-            <>
-              Visual demo — any email/password works.{' '}
-              <a href={DEMO_GITHUB_URL} className="text-brand-600 underline" target="_blank" rel="noreferrer">
-                Full app on GitHub
-              </a>
-            </>
+        <div className="mt-6 text-center text-sm text-slate-400">
+          {isRegistering ? (
+            <p>
+              Already have an account?{' '}
+              <button
+                onClick={() => setIsRegistering(false)}
+                className="text-emerald-400 hover:underline font-medium"
+              >
+                Sign In
+              </button>
+            </p>
           ) : (
-            <>{AUTHOR_LABEL} · demo: admin@test.local / password123</>
+            <p>
+              Don't have an account?{' '}
+              <button
+                onClick={() => setIsRegistering(true)}
+                className="text-emerald-400 hover:underline font-medium"
+              >
+                Register Now
+              </button>
+            </p>
           )}
-        </p>
-      </Card>
+        </div>
       </div>
     </div>
   );
